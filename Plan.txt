@@ -1,0 +1,4 @@
+1. Make the budget page work
+2. Make 3 buttons for the most-used subject on the Accounting page
+3. Make weekly quests according to the budget page
+4. A settings page
