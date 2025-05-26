@@ -24,7 +24,10 @@ public class TaskView {
         filename = username + "Budget.txt";
         
         switch (fileCheck(filename)) {
-            case 1 -> writeInitial();
+            case 1:
+            	writeInitial();
+            	showAlert(AlertType.INFORMATION, "Initial entries written.\nInitial budgets for each entries are set to 20,000");
+            
         }
 
         StackPane root = new StackPane();
@@ -37,10 +40,10 @@ public class TaskView {
 
         // Title and Budget input fields
         TextField titleInput = new TextField();
-        titleInput.setPromptText("Enter title");
+        titleInput.setPromptText("輸入記帳科目");
 
         TextField budgetInput = new TextField();
-        budgetInput.setPromptText("Enter budget");
+        budgetInput.setPromptText("輸入該科目的預算:");
         
         // Output area
         TextArea displayArea = new TextArea();
@@ -198,7 +201,7 @@ public class TaskView {
     
     private void writeInitial() {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
-            writer.write("Title   Budget\n");
+            writer.write("Title   Budget\n食物  20000\n生活用品  20000\n衣服  20000\n通勤  20000\n");
         } catch (IOException e) {
             e.printStackTrace();
         }

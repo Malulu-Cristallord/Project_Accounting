@@ -57,7 +57,7 @@ public class Project_Accounting extends Application {
         Button btnCalendar = new Button("記帳日曆");
         Button btnTask = new Button("預算與任務");
 
-        btnRecord.setOnAction(e -> mainLayout.setCenter(new RecordView().getView(mainPieChart)));
+        btnRecord.setOnAction(e -> mainLayout.setCenter(new RecordView().getView(mainPieChart, name)));
         btnCalendar.setOnAction(e -> mainLayout.setCenter(new CalendarView().getView(s, totalLoggedInDays)));
         btnTask.setOnAction(e -> mainLayout.setCenter(new TaskView().getView(name)));
 
