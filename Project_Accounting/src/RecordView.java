@@ -1,5 +1,12 @@
 import javafx.geometry.Insets;
 import javafx.scene.chart.PieChart;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
+
+import java.io.*;
+import java.util.*;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import java.util.List;
@@ -7,8 +14,11 @@ import java.util.List;
 
 public class RecordView {
     private ListView<String> recordList = new ListView<>();
-
-    public BorderPane getView(PieChart pieChart) {
+    private String fileName = " ";
+    public BorderPane getView(PieChart pieChart, String name) {
+    	
+    	fileName = name + "Record.txt";
+    	fileCheck(fileName);
         VBox inputBox = new VBox(10);
         inputBox.setPadding(new Insets(10));
 
@@ -42,4 +52,21 @@ public class RecordView {
         layout.setRight(pieChart);
         return layout;
     }
+    
+    private void fileCheck(String fileName) {
+        File file = new File(fileName);
+        if (!file.exists()) {
+            try {
+                if (file.createNewFile()) {
+                    System.out.println("Save file not found. New file created.");
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.exit(1);
+            }
+        } else {
+            System.out.println("Save file found.");
+        }
+    }
+    
 }
