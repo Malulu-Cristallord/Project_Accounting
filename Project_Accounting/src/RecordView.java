@@ -65,15 +65,8 @@ public class RecordView {
 
                 Record newRecord = new Record(date, category, itemName, amount);
                 Project_Accounting.records.add(newRecord);
-                
                 writeFile(fileName, fileNameBudget, date, category, itemName, amount);
-                if(getBudget(fileNameBudget, category, itemName, amount) == 1) {
-                    Alert alert = new Alert(Alert.AlertType.WARNING);
-                    alert.setTitle("支出預警");
-                    alert.setHeaderText(null);
-                    alert.setContentText("警告！科目「" + itemName + "」的支出已超過其預算的 80%！");
-                    alert.showAndWait();
-                }
+                getBudget(fileNameBudget, category, itemName, amount);
                 loadRecordListFromFile(fileName);
                 updatePieChartWithSummary(pieChart, Project_Accounting.records, fileName);
             } catch (Exception ex) {
@@ -159,10 +152,14 @@ public class RecordView {
         }
     }
     
-    private int getBudget(String fileNameBudget, String category, String itemName, double amount) {
+    private void getBudget(String fileNameBudget, String category, String itemName, double amount) {
+    	boolean titleFound = false;
+    	double budget = 0;
+    	double budgetSpent = 0;
+    	double newSpent = 0;
         try (Scanner scanner = new Scanner(new File(fileNameBudget))) {
             if (scanner.hasNextLine()) {
-                scanner.nextLine(); 
+                scanner.nextLine(); // skip header
             }
 
             while (scanner.hasNextLine()) {
@@ -170,24 +167,32 @@ public class RecordView {
                 if (!line.isEmpty()) {
                     String[] parts = line.split("\\s+");
                     if (parts.length >= 4) {
-                        String itemNameT = parts[0]; 
-                        double budget = Double.parseDouble(parts[2]);
-                        double budgetSpent = Double.parseDouble(parts[3]);
+                        String itemNameT = parts[0];
+                        budget = Double.parseDouble(parts[2]);
+                        budgetSpent = Double.parseDouble(parts[3]);
 
-                        if (itemName.equals(itemNameT)) {
-                            double newSpent = budgetSpent + amount;
-                            if (budgetSpent < 0.8 * budget && newSpent >= 0.8 * budget) {
-                                return 1; // budget warning
-                            }
-                            break;
+                        if (itemName.trim().equals(itemNameT.trim())) {
+                            titleFound = true;
                         }
                     }
                 }
             }
+            if(titleFound == true) {
+            	newSpent = budgetSpent + amount;
+                if (budget > 0  && newSpent >= 0.8 * budget) {
+                    Alert alert = new Alert(Alert.AlertType.WARNING);
+                    alert.setTitle("支出預警");
+                    alert.setHeaderText(null);
+                    alert.setContentText("警告！科目「" + itemName + "」的支出已超過其預算的 80%！");
+                    alert.showAndWait();
+                }
+                System.out.println("Budget: " + budget + ", Spent: " + budgetSpent + ", New: " + newSpent);
+
+            }
         } catch (IOException | NumberFormatException e) {
             e.printStackTrace();
         }
-        return 0;
+        
     }
 
     // title-category-budget-budgetSpent
@@ -209,9 +214,7 @@ public class RecordView {
             }
     		while(scanner.hasNextLine()) {
                 String line = scanner.nextLine().trim();
-    			if (!line.isEmpty()) {
-                    recordList.getItems().add(line);
-                    
+    			if (!line.isEmpty()) {                    
                     String[] parts = line.trim().split("\\s+");
                     if (parts.length >= 4) {
                         String itemNameT = parts[0];

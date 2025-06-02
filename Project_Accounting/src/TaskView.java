@@ -99,31 +99,54 @@ public class TaskView {
         });
         
         editButton.setOnAction(e -> {
-        	String title = titleInput.getText().trim();
-            String budget = budgetInput.getText().trim();
-            
-            if (title.isEmpty() || budget.isEmpty()) {
-                showAlert(AlertType.WARNING, "兩邊都需要填(若是要刪除請在金額打0");
+            String title = titleInput.getText().trim();
+            String budgetText = budgetInput.getText().trim();
+            String category = categoryBox.getValue();
+
+            if (title.isEmpty() || budgetText.isEmpty()) {
+                showAlert(AlertType.WARNING, "請輸入項目與預算金額。（刪除請將預算設為 0）");
                 return;
             }
-            if(Integer.valueOf(budget) < 0) {
-            	showAlert(AlertType.WARNING, "預算金額必須大於0");
+
+            double budget;
+            try {
+                budget = Double.parseDouble(budgetText);
+                if (budget < 0) {
+                    showAlert(AlertType.WARNING, "預算金額不能為負數。");
+                    return;
+                }
+            } catch (NumberFormatException ex) {
+                showAlert(AlertType.ERROR, "請輸入有效的預算金額（數字）。");
                 return;
             }
-            
-            if(isDuplicateTitle(title)) {
-            	deleteTitle(title);
-            	if(!budget.equals("0")) {
-                    writeFile(title, budget, categoryBox.getValue().toString(), "0");
-                    showAlert(AlertType.INFORMATION, "項目已修改並儲存");
-            	}else {
-                    showAlert(AlertType.INFORMATION, "項目已刪除並儲存");
-            	}
-                updateDisplay(displayArea);
-                titleInput.clear();
-                budgetInput.clear();
+
+            if (!isDuplicateTitle(title)) {
+                showAlert(AlertType.ERROR, "找不到該項目，無法編輯。");
+                return;
             }
+
+            // Proceed to delete the old one first
+            deleteTitle(title);
+
+            if (budget == 0) {
+                showAlert(AlertType.INFORMATION, "已刪除項目: " + title);
+            } else {
+                if (category == null || category.isEmpty()) {
+                    showAlert(AlertType.WARNING, "請選擇類別。");
+                    return;
+                }
+
+                // Write new item with updated budget
+                writeFile(title, String.format("%.2f", budget), category, "0");
+                showAlert(AlertType.INFORMATION, "已更新項目: " + title);
+            }
+
+            updateDisplay(displayArea);
+            titleInput.clear();
+            budgetInput.clear();
+            categoryBox.setValue(null);
         });
+
         
         deleteButton.setOnAction(e -> handleClearFile(filename));
         
@@ -177,8 +200,13 @@ public class TaskView {
     }
     
     private void deleteTitle(String titleToDelete) {
-        File originalFile = new File(filename);
-        File tempFile = new File("temp_" + filename);
+    	File originalFile = new File(filename);
+    	File tempFile = new File(originalFile.getParentFile(), "temp_" + originalFile.getName());
+        try {
+			tempFile.createNewFile();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
         boolean found = false;
         try (
             BufferedReader reader = new BufferedReader(new FileReader(originalFile));
@@ -188,7 +216,7 @@ public class TaskView {
             
             while ((line = reader.readLine()) != null) {
                 // Skip header, always keep it
-                if (line.trim().equalsIgnoreCase("Title     Category     Budget     Budget spent")) {
+                if (line.trim().equalsIgnoreCase(String.format("%-20s%-20s%-20s%-20s%n", "項目", "類別", "預算", "已花費預算"))) {
                     writer.write(line);
                     writer.newLine();
                     continue;
