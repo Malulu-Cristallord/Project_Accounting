@@ -18,6 +18,7 @@ public class RecordView {
     	
     	String fileName = "data/" + name + "Record.txt";
     	fileCheck(fileName);
+    	Project_Accounting.records.clear();
     	loadRecordsFromFile(fileName);
     	DatePicker datePicker = new DatePicker();
         ComboBox<String> categoryBox = new ComboBox<>();
@@ -37,7 +38,7 @@ public class RecordView {
             if (selectedCategory != null) {
                 Project_Accounting.records.removeIf(r -> r.category.equals(selectedCategory));
                 recordList.getItems().removeIf(s -> s.contains("| " + selectedCategory + " |"));
-                updatePieChartWithSummary(pieChart, Project_Accounting.records);
+                updatePieChartWithSummary(pieChart, Project_Accounting.records, fileName);
             } else {
                 Alert alert = new Alert(Alert.AlertType.WARNING, "請選擇要刪除的類別！");
                 alert.showAndWait();
@@ -84,7 +85,7 @@ public class RecordView {
                     alert.showAndWait();
                 }
 
-                updatePieChartWithSummary(pieChart, Project_Accounting.records);
+                updatePieChartWithSummary(pieChart, Project_Accounting.records, fileName);
             } catch (Exception ex) {
                 Parent parent = inputRow.getParent();
                 if (parent instanceof Pane pane) {
@@ -103,12 +104,12 @@ public class RecordView {
         rightPanel.setPadding(new Insets(10));
         rightPanel.setPrefWidth(300);  
         layout.setRight(rightPanel);
-        updatePieChartWithSummary(pieChart, Project_Accounting.records);
+        updatePieChartWithSummary(pieChart, Project_Accounting.records, fileName);
 
         return layout;
     }
 
-    private void updatePieChartWithSummary(PieChart chart, List<Record> records) {
+    private void updatePieChartWithSummary(PieChart chart, List<Record> records, String FileName) {
         try {
             Map<String, Double> categoryTotals = new HashMap<>();
             for (Record r : records) {
@@ -137,6 +138,7 @@ public class RecordView {
     }
     
     private void loadRecordsFromFile(String fileName) {
+    	recordList.getItems().clear();
         try (Scanner scanner = new Scanner(new File(fileName))) {
             while (scanner.hasNextLine()) {
                 String line = scanner.nextLine().trim();
