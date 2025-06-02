@@ -18,7 +18,7 @@ public class CalendarView {
     private static final Color CURRENT_DAY_COLOR = Color.RED;
     private static final Color DEFAULT_DAY_COLOR = Color.GREEN;
     private static final Color RING_COLOR = Color.GOLD;
-    private static final String[] DAY_NAMES = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
+    private static final String[] DAY_NAMES = {"一", "二", "三", "四", "五", "六", "日"};
 
     public StackPane getView(Set<Integer> loggedInDays, int totalLoggedInDays) {
         LocalDate today = LocalDate.now();
@@ -37,7 +37,7 @@ public class CalendarView {
             circleRow.getChildren().add(createDayCircle(i, currentDayIndex, loggedInDays));
         }
 
-        Text dateText = createStyledText("Today is: " + today + " (yyyy-mm-dd)", 28, false);
+        Text dateText = createStyledText("今天是: " + today + " (yyyy-mm-dd)", 28, false);
         Text loginCountText = createStyledText("總登入天數: " + totalLoggedInDays, 28, true);
 
         content.getChildren().addAll(dateText, circleRow, loginCountText);

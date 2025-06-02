@@ -17,6 +17,7 @@ public class RecordView {
     public BorderPane getView(PieChart pieChart, String name) {
     	
     	String fileName = "data/" + name + "Record.txt";
+    	String fileNameBudget = "data/" + name + "Budget.txt";
     	fileCheck(fileName);
     	Project_Accounting.records.clear();
     	loadRecordsFromFile(fileName);
@@ -64,27 +65,16 @@ public class RecordView {
 
                 Record newRecord = new Record(date, category, itemName, amount);
                 Project_Accounting.records.add(newRecord);
-                writeFile(fileName, date, category, itemName, amount);
-                recordList.getItems().add(newRecord.toString());
-
-                // 新增功能：支出預警（當該類別支出超過所有支出80%時）
-                double totalAmount = Project_Accounting.records.stream()
-                        .mapToDouble(r -> r.amount)
-                        .sum();
-                double categoryAmount = Project_Accounting.records.stream()
-                        .filter(r -> r.category.equals(category))
-                        .mapToDouble(r -> r.amount)
-                        .sum();
-
-                double warningThreshold = 0.8; // 50%
-                if (totalAmount > 0 && (categoryAmount / totalAmount) > warningThreshold) {
+                
+                writeFile(fileName, fileNameBudget, date, category, itemName, amount);
+                if(getBudget(fileNameBudget, category, itemName, amount) == 1) {
                     Alert alert = new Alert(Alert.AlertType.WARNING);
                     alert.setTitle("支出預警");
                     alert.setHeaderText(null);
-                    alert.setContentText("警告！類別「" + category + "」的支出已超過總支出的 80%！");
+                    alert.setContentText("警告！科目「" + itemName + "」的支出已超過其預算的 80%！");
                     alert.showAndWait();
                 }
-
+                loadRecordListFromFile(fileName);
                 updatePieChartWithSummary(pieChart, Project_Accounting.records, fileName);
             } catch (Exception ex) {
                 Parent parent = inputRow.getParent();
@@ -109,7 +99,7 @@ public class RecordView {
         return layout;
     }
 
-    private void updatePieChartWithSummary(PieChart chart, List<Record> records, String FileName) {
+    private void updatePieChartWithSummary(PieChart chart, List<Record> records, String fileName) {
         try {
             Map<String, Double> categoryTotals = new HashMap<>();
             for (Record r : records) {
@@ -118,24 +108,31 @@ public class RecordView {
 
             chart.getData().clear();
             double total = categoryTotals.values().stream().mapToDouble(Double::doubleValue).sum();
-            if (total == 0) total = 1; 
+            if (total == 0) total = 1;  // avoid division by zero
 
             for (Map.Entry<String, Double> entry : categoryTotals.entrySet()) {
-                double percentage = (entry.getValue() / total) * 100;
-                chart.getData().add(new PieChart.Data(entry.getKey() + " " + String.format("%.1f%%", percentage), entry.getValue()));                
+                double value = entry.getValue();
+                double percentage = (value / total) * 100;
+                String label = String.format("%s %.1f%%", entry.getKey(), percentage);
+                PieChart.Data slice = new PieChart.Data(label, value);
+                chart.getData().add(slice);
             }
 
             summaryBox.getChildren().clear();
-            summaryBox.getChildren().add(new Label("各類別總額：" + total));
-            for (String category : Arrays.asList("吃的", "日常確幸", "服飾", "欠款", "通勤", "其他")) {
+            summaryBox.getChildren().add(new Label("各類別總額：" + String.format("%.2f 元", total)));
+
+            for (String category : Arrays.asList("食物", "日常確幸", "服飾", "欠款", "通勤", "其他")) {
                 double sum = categoryTotals.getOrDefault(category, 0.0);
                 summaryBox.getChildren().add(new Label(category + ": " + sum + " 元"));
             }
 
         } catch (Exception e) {
             chart.setTitle("資料錯誤：更新失敗但仍保留之前的資料");
+            e.printStackTrace();
         }
     }
+
+
     
     private void loadRecordsFromFile(String fileName) {
     	recordList.getItems().clear();
@@ -161,15 +158,108 @@ public class RecordView {
             e.printStackTrace();
         }
     }
-
     
-    private void writeFile(String fileName, String date, String category, String itemName, double amount) {
+    private int getBudget(String fileNameBudget, String category, String itemName, double amount) {
+        try (Scanner scanner = new Scanner(new File(fileNameBudget))) {
+            if (scanner.hasNextLine()) {
+                scanner.nextLine(); 
+            }
+
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine().trim();
+                if (!line.isEmpty()) {
+                    String[] parts = line.split("\\s+");
+                    if (parts.length >= 4) {
+                        String itemNameT = parts[0]; 
+                        double budget = Double.parseDouble(parts[2]);
+                        double budgetSpent = Double.parseDouble(parts[3]);
+
+                        if (itemName.equals(itemNameT)) {
+                            double newSpent = budgetSpent + amount;
+                            if (budgetSpent < 0.8 * budget && newSpent >= 0.8 * budget) {
+                                return 1; // budget warning
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (IOException | NumberFormatException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    // title-category-budget-budgetSpent
+    // write a record into a file and check the budget file, if found, update the 已花費預算. If not, don't do anything to the budget file
+    private void writeFile(String fileName, String fileNameBudget, String date, String category, String itemName, double amount) {
+    	
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName, true))) {
             writer.write(String.format("%-20s%-20s%-20s%-20s%n", date, category, itemName, amount));
         } catch (IOException e) {
             e.printStackTrace();
         }
+        
+        boolean budgetTitleFound = false;
+        List<String> updatedLines = new ArrayList<>();
+        // fix this so that the reader ignores the first line
+        try(Scanner scanner = new Scanner(new File(fileNameBudget))){
+            if (scanner.hasNextLine()) {
+                scanner.nextLine(); 
+            }
+    		while(scanner.hasNextLine()) {
+                String line = scanner.nextLine().trim();
+    			if (!line.isEmpty()) {
+                    recordList.getItems().add(line);
+                    
+                    String[] parts = line.trim().split("\\s+");
+                    if (parts.length >= 4) {
+                        String itemNameT = parts[0];
+                        double budget = Double.parseDouble(parts[2]);
+                        double budgetSpent = Double.parseDouble(parts[3]);
+                        
+                        if(itemNameT.equals(itemName)) {
+                        	budgetSpent += amount;
+                        	budgetTitleFound = true;
+                        	updatedLines.add(String.format("%-20s%-20s%-20.2f%-20.2f", itemName, category, budget, budgetSpent));
+                        } else {
+                        	updatedLines.add(line);
+                        }
+                    }
+                }
+    		}
+    		
+    	    if (budgetTitleFound) {
+    	        try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileNameBudget))) {
+    	        	writer.write(String.format("%-20s%-20s%-20s%-20s%n", "項目", "類別", "預算", "已花費預算"));
+    	            for (String updatedLine : updatedLines) {
+    	                writer.write(updatedLine);
+    	                writer.newLine();
+    	            }
+    	        } catch (IOException e) {
+    	            e.printStackTrace();
+    	        }
+    	    }
+    	}catch (IOException | NumberFormatException e) {
+            e.printStackTrace();
+        }
+        
     }
+    
+    private void loadRecordListFromFile(String fileName) {
+        recordList.getItems().clear();
+        try (Scanner scanner = new Scanner(new File(fileName))) {
+            while (scanner.hasNextLine()) {
+                String line = scanner.nextLine().trim();
+                if (!line.isEmpty()) {
+                    recordList.getItems().add(line);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     
     private void fileCheck(String fileName) {
     	File file = new File(fileName);

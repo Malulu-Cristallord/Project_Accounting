@@ -65,7 +65,7 @@ public class LoginPage {
         if (!userFile.exists()) {
             try {
                 if (userFile.createNewFile()) {
-                	showSuccess("File creation successful!");
+                	showSuccess("已成功建立檔案!");
                 }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -234,7 +234,7 @@ public class LoginPage {
         String inputP = tfPassword.getText().trim();
         
         if (inputU.isEmpty() || inputP.isEmpty()) {
-            showError("Username and Password cannot be empty");
+            showError("使用者名稱與密碼不得為空");
             return;
         }
 
@@ -244,7 +244,7 @@ public class LoginPage {
                 String line = sc.nextLine();
                 String[] parts = line.split(FIELD_DET);
                 if (parts.length >= 1 && parts[0].equals(inputU)) {
-                    showError("Username already exists!");
+                    showError("該名稱已被使用!");
                     return;
                 }
             }
@@ -264,7 +264,7 @@ public class LoginPage {
             /*
              * FORMAT: name password weeklogin hasloggedin totalloggedin currentweek currentday
              */
-            showSuccess("Enrollment successful!");
+            showSuccess("註冊成功!");
         } catch (IOException e) {
             e.printStackTrace();
             showError("Error enrolling user");
@@ -331,7 +331,7 @@ public class LoginPage {
             }
 
             if (allDeleted) {
-                showSuccess("All data files cleared.");
+                showSuccess("全部資料都已刪除.");
             } else {
                 showError("Some files could not be deleted.");
             }

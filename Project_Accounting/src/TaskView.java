@@ -48,7 +48,7 @@ public class TaskView {
         
         Label type = new Label("請輸入類別: ");
         ComboBox<String> categoryBox = new ComboBox<>();
-        categoryBox.getItems().addAll("吃的", "日常確幸", "服飾", "欠款", "通勤", "其他");
+        categoryBox.getItems().addAll("食物", "日常確幸", "服飾", "欠款", "通勤", "其他");
         
         HBox titleInputBox = new HBox(10);
         titleInputBox.getChildren().addAll(titleInput, type, categoryBox);
@@ -65,10 +65,10 @@ public class TaskView {
         label.setStyle("-fx-font-size: 30px; -fx-font-weight: bold;");
         
         // Save button
-        Button saveButton = new Button("Add Entry");
+        Button saveButton = new Button("新增項目");
         
         //Edit button
-        Button editButton = new Button("Edit");
+        Button editButton = new Button("編輯");
 
         Button deleteButton = new Button("清除檔案並關閉程式(按下前請三思)");
         deleteButton.setStyle("-fx-background-color: #8B0000; -fx-text-fill: #FFFFFF;");
@@ -79,20 +79,20 @@ public class TaskView {
             String budget = budgetInput.getText().trim();
 
             if (title.isEmpty() || budget.isEmpty()) {
-                showAlert(AlertType.WARNING, "Both fields must be filled.");
+                showAlert(AlertType.WARNING, "兩邊都需要填");
                 return;
             }
             if(Integer.valueOf(budget) < 0) {
-            	showAlert(AlertType.WARNING, "Budget must be more than 0.");
+            	showAlert(AlertType.WARNING, "預算金額必須大於0");
                 return;
             }
 
             if (isDuplicateTitle(title)) {
-                showAlert(AlertType.ERROR, "Title already exists.");
+                showAlert(AlertType.ERROR, "項目已經存在");
             } else {
-                writeFile(title, budget, categoryBox.getValue().toString());
+                writeFile(title, budget, categoryBox.getValue().toString(), "0");
                 updateDisplay(displayArea);
-                showAlert(AlertType.INFORMATION, "Entry saved.");
+                showAlert(AlertType.INFORMATION, "已儲存項目");
                 titleInput.clear();
                 budgetInput.clear();
             }
@@ -103,21 +103,21 @@ public class TaskView {
             String budget = budgetInput.getText().trim();
             
             if (title.isEmpty() || budget.isEmpty()) {
-                showAlert(AlertType.WARNING, "Both fields must be filled. (To delete, set budget to 0.");
+                showAlert(AlertType.WARNING, "兩邊都需要填(若是要刪除請在金額打0");
                 return;
             }
             if(Integer.valueOf(budget) < 0) {
-            	showAlert(AlertType.WARNING, "Budget must be more than 0.");
+            	showAlert(AlertType.WARNING, "預算金額必須大於0");
                 return;
             }
             
             if(isDuplicateTitle(title)) {
             	deleteTitle(title);
             	if(!budget.equals("0")) {
-                    writeFile(title, budget, categoryBox.getValue().toString());
-                    showAlert(AlertType.INFORMATION, "Entry edited and saved.");
+                    writeFile(title, budget, categoryBox.getValue().toString(), "0");
+                    showAlert(AlertType.INFORMATION, "項目已修改並儲存");
             	}else {
-                    showAlert(AlertType.INFORMATION, "Entry deleted and saved.");
+                    showAlert(AlertType.INFORMATION, "項目已刪除並儲存");
             	}
                 updateDisplay(displayArea);
                 titleInput.clear();
@@ -154,9 +154,9 @@ public class TaskView {
         return 2;
     }
 
-    private void writeFile(String title, String budget, String type) {
+    private void writeFile(String title, String budget, String type, String budgetSpent) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename, true))) {
-            writer.write(String.format("%-20s%-20s%-20s%n", title, budget, type));
+            writer.write(String.format("%-20s%-20s%-20s%-20s%n", title, type, budget, budgetSpent));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -188,7 +188,7 @@ public class TaskView {
             
             while ((line = reader.readLine()) != null) {
                 // Skip header, always keep it
-                if (line.trim().equalsIgnoreCase("Title     Budget     Category")) {
+                if (line.trim().equalsIgnoreCase("Title     Category     Budget     Budget spent")) {
                     writer.write(line);
                     writer.newLine();
                     continue;
@@ -212,18 +212,18 @@ public class TaskView {
 
         // Replace original file with temp file
         if (!originalFile.delete() || !tempFile.renameTo(originalFile)) {
-            showAlert(AlertType.ERROR, "Failed to update the file.");
+            showAlert(AlertType.ERROR, "讀檔失敗.");
         }
 
         if (!found) {
-            showAlert(AlertType.WARNING, "Title not found.");
+            showAlert(AlertType.WARNING, "找不到項目.");
         }
     }
 
     
     private void writeInitial() {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filename))) {
-            writer.write(String.format("%-20s%-20s%-20s%n", "Title", "Budget", "Category"));
+            writer.write(String.format("%-20s%-20s%-20s%-20s%n", "項目", "類別", "預算", "已花費預算"));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -269,9 +269,9 @@ public class TaskView {
     private void handleClearFile(String fileName) {
         File file = new File(fileName);
         if (file.exists() && file.delete()) {
-            showSuccess("User data file cleared");
+            showSuccess("已清除檔案");
         } else {
-            showError("Error clearing user data file");
+            showError("清除檔案失敗，請至Data檔案夾手動清除");
         }
         System.exit(0);
     }
