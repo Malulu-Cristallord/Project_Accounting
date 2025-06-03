@@ -18,7 +18,7 @@ public class CalendarView {
     private static final Color CURRENT_DAY_COLOR = Color.RED;
     private static final Color DEFAULT_DAY_COLOR = Color.GREEN;
     private static final Color RING_COLOR = Color.GOLD;
-    private static final String[] DAY_NAMES = {"一", "二", "三", "四", "五", "六", "日"};
+    private static final String[] DAY_NAMES = {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
 
     public StackPane getView(Set<Integer> loggedInDays, int totalLoggedInDays) {
         LocalDate today = LocalDate.now();

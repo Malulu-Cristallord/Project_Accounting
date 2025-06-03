@@ -90,11 +90,10 @@ public class LoginPage {
 
         boolean userFound = false;
         String storedP = null; // stored password
-        StringBuilder weekLogin = new StringBuilder(); // login days in a week
         String tempWeekLogin = " "; // temp
         int recordedWeek = 0; // record week
         int recordedDay = 0; // //day
-        int hasLoggedIn = 1; // same day login indicator
+        int hasLoggedIn = 0; // same day login indicator
         String matchedLine = null;
         List<String> allLines = new ArrayList<>();
 
@@ -139,7 +138,7 @@ public class LoginPage {
         LocalDate today = LocalDate.now();
         int currentDayOfWeek = today.getDayOfWeek().getValue(); // 1 = Monday
         int currentWeek = today.get(WeekFields.ISO.weekOfWeekBasedYear());
-
+        int tempHasLoggedIn = 1;
         // Reset hasLoggedIn if it's a new day
         if (recordedDay != currentDayOfWeek) {
             hasLoggedIn = 0;
@@ -152,12 +151,13 @@ public class LoginPage {
         }
 
         if (recordedWeek != currentWeek || hasLoggedIn == 0) {
-            totalLoggedInDays++;
+            totalLoggedInDays++; //needs to return some values
             hasLoggedIn = 1;
+            tempHasLoggedIn = 0;
         }
 
         String weekLoginStr = buildNormalizedWeekLogin(tempWeekLogin, recordedWeek, recordedDay,
-                                                        currentWeek, currentDayOfWeek, hasLoggedIn);
+                                                        currentWeek, currentDayOfWeek, tempHasLoggedIn);
 
         // Prepare updated line
         String updatedLine = inputU + FIELD_DET + storedP + FIELD_DET + weekLoginStr + FIELD_DET +
