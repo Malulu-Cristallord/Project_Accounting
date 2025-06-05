@@ -178,7 +178,7 @@ public class RecordView {
                 }
             }
             if(titleFound == true) {
-            	newSpent = budgetSpent + amount;
+            	newSpent = budgetSpent;
                 if (budget > 0  && newSpent >= 0.8 * budget) {
                     Alert alert = new Alert(Alert.AlertType.WARNING);
                     alert.setTitle("支出預警");
@@ -186,7 +186,7 @@ public class RecordView {
                     alert.setContentText("警告！科目「" + itemName + "」的支出已超過其預算的 80%！");
                     alert.showAndWait();
                 }
-                System.out.println("Budget: " + budget + ", Spent: " + budgetSpent + ", New: " + newSpent);
+                System.out.println("Budget: " + budget + ", New: " + newSpent + ", BudgetSpent: " + budgetSpent);
 
             }
         } catch (IOException | NumberFormatException e) {

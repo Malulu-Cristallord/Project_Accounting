@@ -8,6 +8,11 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.io.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.temporal.WeekFields;
 import java.util.*;
@@ -22,13 +27,17 @@ public class LoginPage {
 	private final int currentDay = getCurrentDay();
     private TextField tfUserName;
     private PasswordField tfPassword;
-    private Button btnLogin, btnEnroll, btnClearFile;
+    private Button btnLogin, btnDeleteUser, btnEnroll, btnClearFile;
     private String fileName = "UserNames.txt";
-
+    private final String server  = "jdbc:mysql://140.119.19.73:3315/";
+    private final String database = "TG12";
+	private final String url = server + database + "?useSSL=false";
+	private final String username = "TG12";
+	private final String password = "nkH3Iq"; 
     public void createLoginPage(Stage stage) {
     	
     	fileCheck(userDataFile);
-
+    	connectDB(server, database, url, username, password);
         VBox layout = new VBox(10);
         VBox button = new VBox(10);
         tfUserName = new TextField();
@@ -41,12 +50,15 @@ public class LoginPage {
         btnLogin = new Button("登入");
         btnClearFile = new Button("清除檔案並關閉程式(按下前請三思)");
         btnClearFile.setStyle("-fx-background-color: #8B0000; -fx-text-fill: #FFFFFF;");
+        btnDeleteUser = new Button("刪除已輸入的使用者檔案");
+        btnDeleteUser.setStyle("-fx-background-color: #8B0000; -fx-text-fill: #FFFFFF;");
 
         btnLogin.setOnAction(e -> handleLogin(stage));
         btnEnroll.setOnAction(e -> handleEnroll());
+        btnDeleteUser.setOnAction(e -> handleDeleteUser());
         btnClearFile.setOnAction(e -> handleClearFile());
         
-        button.getChildren().addAll(btnLogin, btnEnroll, btnClearFile);
+        button.getChildren().addAll(btnLogin, btnEnroll, btnDeleteUser, btnClearFile);
         layout.getChildren().addAll(tfUserName, tfPassword, button);
 
         Scene scene = new Scene(layout, 400, 300);
@@ -78,7 +90,7 @@ public class LoginPage {
 
     
     //The login process after the user presses the login button
-    private void handleLogin(Stage stage) {
+    private void handleLoginAlt(Stage stage) {
         String inputU = tfUserName.getText().trim();
         String inputP = tfPassword.getText().trim();
         int totalLoggedInDays = 0;
@@ -134,18 +146,17 @@ public class LoginPage {
             return;
         }
 
-        // Get current date info
+      
         LocalDate today = LocalDate.now();
         int currentDayOfWeek = today.getDayOfWeek().getValue(); // 1 = Monday
         int currentWeek = today.get(WeekFields.ISO.weekOfWeekBasedYear());
         int tempHasLoggedIn = 1;
-        // Reset hasLoggedIn if it's a new day
+    
         if (recordedDay != currentDayOfWeek) {
             hasLoggedIn = 0;
         }
 
-        // Update login state
-     // Update login info
+    
         if (recordedDay != currentDayOfWeek) {
             hasLoggedIn = 0;
         }
@@ -159,19 +170,17 @@ public class LoginPage {
         String weekLoginStr = buildNormalizedWeekLogin(tempWeekLogin, recordedWeek, recordedDay,
                                                         currentWeek, currentDayOfWeek, tempHasLoggedIn);
 
-        // Prepare updated line
         String updatedLine = inputU + FIELD_DET + storedP + FIELD_DET + weekLoginStr + FIELD_DET +
                 hasLoggedIn + FIELD_DET + totalLoggedInDays + FIELD_DET +
                 currentWeek + FIELD_DET + currentDayOfWeek + "\n";
-        
-        // Rebuild file content
+     
         List<String> updatedLines = new ArrayList<>();
         for (String line : allLines) {
             if (line.equals(matchedLine)) {
                 updatedLines.add(updatedLine);
             } else {
                 updatedLines.add(line);
-            }
+            }  
         }
 
         try (FileWriter writer = new FileWriter(userDataFile, false)) {
@@ -195,6 +204,159 @@ public class LoginPage {
 
         loginSuccess(inputU, stage, updatedWeekLoginI, totalLoggedInDays);
     }
+    
+    private void handleDeleteUser() {
+    	
+    	String inputU = tfUserName.getText().trim();
+        String inputP = tfPassword.getText().trim();
+        if (inputU.isEmpty() || inputP.isEmpty()) {
+            showError("使用者名稱或密碼不得為空!");
+            return;
+        }
+
+        String encodedInputP = Base64.getEncoder().encodeToString(inputP.getBytes());
+        String storedHash = null;
+        int userID = -1;
+        try (Connection conn = DriverManager.getConnection(url, username, password)) {
+            String sql = "SELECT ID, password_hash, loginInfo FROM UserInfo WHERE userName = ?";
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, inputU);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                userID = rs.getInt("ID");
+                storedHash = rs.getString("password_hash");
+            } else {
+                showError("找不到使用者名稱!");
+                return;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            showError("資料庫錯誤!");
+            return;
+        }
+
+        if (!encodedInputP.equals(storedHash)) {
+            showError("密碼錯誤!");
+            return;
+        }
+        try (Connection conn = DriverManager.getConnection(url, username, password)){
+            String sql = "DELETE FROM UserInfo WHERE userName = ?";
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, inputU);
+            int affectedRows = ps.executeUpdate();
+            
+            if (affectedRows > 0) {
+                showSuccess("使用者已成功刪除!");
+            } else {
+                showError("刪除失敗，請再試一次。");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            showError("資料庫錯誤!");
+            return;
+        }
+    }
+    private void handleLogin(Stage stage) {
+        String inputU = tfUserName.getText().trim();
+        String inputP = tfPassword.getText().trim();
+        
+        if (inputU.isEmpty() || inputP.isEmpty()) {
+            showError("使用者名稱或密碼不得為空!");
+            return;
+        }
+
+        String encodedInputP = Base64.getEncoder().encodeToString(inputP.getBytes());
+        String storedHash = null;
+        String loginInfo = null;
+        int userID = -1;
+
+        try (Connection conn = DriverManager.getConnection(url, username, password)) {
+            String sql = "SELECT ID, password_hash, loginInfo FROM UserInfo WHERE userName = ?";
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, inputU);
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                userID = rs.getInt("ID");
+                storedHash = rs.getString("password_hash");
+                loginInfo = rs.getString("loginInfo");
+            } else {
+                showError("找不到使用者名稱!");
+                return;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            showError("資料庫錯誤!");
+            return;
+        }
+
+        if (!encodedInputP.equals(storedHash)) {
+            showError("密碼錯誤!");
+            return;
+        }
+
+        // --- Parse loginInfo ---
+        String[] parts = loginInfo.split(FIELD_DET);
+        if (parts.length < 5) {
+            showError("資料格式錯誤!");
+            return;
+        }
+
+        String weekLoginStr = parts[0];  // e.g. "0.1.0.1.0.0.0"
+        int hasLoggedIn = Integer.parseInt(parts[1]);
+        int totalLoggedInDays = Integer.parseInt(parts[2]);
+        int recordedWeek = Integer.parseInt(parts[3]);
+        int recordedDay = Integer.parseInt(parts[4]);
+
+        LocalDate today = LocalDate.now();
+        int currentDayOfWeek = today.getDayOfWeek().getValue(); // 1 = Monday
+        int currentWeek = today.get(WeekFields.ISO.weekOfWeekBasedYear());
+
+        int tempHasLoggedIn = 1;
+        if (recordedDay != currentDayOfWeek) {
+            hasLoggedIn = 0;
+        }
+
+        if (recordedWeek != currentWeek || hasLoggedIn == 0) {
+            totalLoggedInDays++;
+            hasLoggedIn = 1;
+            tempHasLoggedIn = 0;
+        }
+
+        String updatedWeekLogin = buildNormalizedWeekLogin(weekLoginStr, recordedWeek, recordedDay,
+                currentWeek, currentDayOfWeek, tempHasLoggedIn);
+
+        // --- Rebuild loginInfo string ---
+        String updatedLoginInfo = updatedWeekLogin + FIELD_DET +
+                                  hasLoggedIn + FIELD_DET +
+                                  totalLoggedInDays + FIELD_DET +
+                                  currentWeek + FIELD_DET +
+                                  currentDayOfWeek;
+
+        // --- Save updated loginInfo ---
+        try (Connection conn = DriverManager.getConnection(url, username, password)) {
+            String updateSql = "UPDATE UserInfo SET loginInfo = ? WHERE ID = ?";
+            PreparedStatement updateStmt = conn.prepareStatement(updateSql);
+            updateStmt.setString(1, updatedLoginInfo);
+            updateStmt.setInt(2, userID);
+            updateStmt.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            showError("更新登入資料時錯誤!");
+            return;
+        }
+
+        // --- Parse week login string into int array ---
+        String[] updatedWeekLoginS = updatedWeekLogin.split("\\.");
+        Integer[] updatedWeekLoginI = new Integer[7];
+        for (int i = 0; i < 7; i++) {
+            updatedWeekLoginI[i] = updatedWeekLoginS[i].equals("1") ? i + 1 : null;
+        }
+
+        loginSuccess(inputU, stage, updatedWeekLoginI, totalLoggedInDays);
+    }
+
 
 
     //Passes the data after success login
@@ -258,17 +420,24 @@ public class LoginPage {
         int weekLogin = 0;
         int hasLoggedIn = 0;
 
-        try (FileWriter writer = new FileWriter(userDataFile.getPath(), true)) {  // true = append
-            writer.write(inputU + FIELD_DET + inputP + FIELD_DET + weekLogin + FIELD_DET +
-                    hasLoggedIn + FIELD_DET + totalLoggedInDays + FIELD_DET + currentWeek + FIELD_DET + currentDay +"\n");
-            /*
-             * FORMAT: name password weeklogin hasloggedin totalloggedin currentweek currentday
-             */
+     // Base64 encode password (not secure! Better to use BCrypt or Argon2 instead)
+        String encodedPassword = Base64.getEncoder().encodeToString(inputP.getBytes());
+
+        String loginInfo = "0.0.0.0.0.0.0" + FIELD_DET + "0" + FIELD_DET + "0" + FIELD_DET + currentWeek + FIELD_DET + currentDay;
+
+        try (Connection conn = DriverManager.getConnection(url, username, password)) {
+            String sql = "INSERT INTO UserInfo (userName, password_hash, loginInfo) VALUES (?, ?, ?)";
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, inputU);
+            ps.setString(2, encodedPassword);
+            ps.setString(3, loginInfo);
+            ps.executeUpdate();
             showSuccess("註冊成功!");
-        } catch (IOException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
-            showError("Error enrolling user");
+            showError("無法註冊使用者。");
         }
+
     }
     
     //Don't touch
@@ -339,6 +508,14 @@ public class LoginPage {
             showError("Data folder does not exist.");
         }
         System.exit(0);  // Close application
+    }
+    
+    private void connectDB(String server, String database, String url, String username, String password) {
+		try (Connection conn = DriverManager.getConnection(url, username, password)) {
+			System.out.println("DB Connected");
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
     }
 
 }
